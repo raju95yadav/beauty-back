@@ -35,8 +35,8 @@ const limiter = rateLimit({
 
 app.use(express.json());
 const allowedOrigins = [
-    'https://glam-beuty.vercel.app',
-    'https://glam-admin.vercel.app',
+    'https://beauty-glam-five.vercel.app',
+    'https://beauty-admin-pied.vercel.app',
     'http://localhost:5173',
     'http://localhost:5174'
 ];
