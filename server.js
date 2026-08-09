@@ -26,7 +26,11 @@ connectDB();
 
 const app = express();
 
+// Trust proxy - required for Vercel/reverse proxy deployments
+app.set('trust proxy', 1);
+
 const limiter = rateLimit({
+
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per `window`
     standardHeaders: true,
@@ -35,8 +39,8 @@ const limiter = rateLimit({
 
 app.use(express.json());
 const allowedOrigins = [
-    'https://beauty-glam-five.vercel.app',
-    'https://beauty-admin-pied.vercel.app',
+    'https://glam-beauty.in',
+    'https://glam-beauty-admin.in',
     'http://localhost:5173',
     'http://localhost:5174'
 ];
