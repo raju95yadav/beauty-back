@@ -19,14 +19,18 @@ const sendOTP = async (req, res) => {
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     console.log(`Updating user in DB...`);
-    // Find or create user and update OTP
+    const defaultName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
     await User.findOneAndUpdate(
       { email: email.toLowerCase() },
       { 
         $set: { 
           otp, 
           otpExpiry
-        } 
+        },
+        $setOnInsert: {
+          name: defaultName,
+          role: 'user'
+        }
       },
       { upsert: true, new: true }
     );
@@ -117,12 +121,6 @@ const adminLogin = async (req, res) => {
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Please provide email and password' });
-  }
-
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
-
-  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    return res.status(401).json({ message: 'Not authorized as admin' });
   }
 
   try {

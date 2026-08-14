@@ -78,5 +78,20 @@ const updateCartItem = async (req, res) => {
         throw new Error('Cart not found');
     }
 };
+// @desc    Clear entire cart
+// @route   DELETE /api/cart
+// @access  Private
+const clearCart = async (req, res) => {
+    const cart = await Cart.findOne({ user: req.user._id });
 
-module.exports = { getCart, addToCart, removeFromCart, updateCartItem };
+    if (cart) {
+        cart.cartItems = [];
+        await cart.save();
+        res.json({ message: 'Cart cleared' });
+    } else {
+        res.json({ message: 'Cart already empty' });
+    }
+};
+
+module.exports = { getCart, addToCart, removeFromCart, updateCartItem, clearCart };
+

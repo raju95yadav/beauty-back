@@ -27,12 +27,13 @@ connectDB();
 const app = express();
 
 // Trust proxy - required for Vercel/reverse proxy deployments
+// Fixes express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR error
 app.set('trust proxy', 1);
 
 const limiter = rateLimit({
 
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per `window`
+    max: 1000, // Limit each IP to 1000 requests per `window`
     standardHeaders: true,
     legacyHeaders: false,
 });

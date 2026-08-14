@@ -15,7 +15,7 @@ const getUsers = async (req, res) => {
 // @route   GET /api/admin/orders
 // @access  Private/Admin
 const getAllOrders = async (req, res) => {
-    const orders = await Order.find({}).populate('user', 'id name');
+    const orders = await Order.find({}).populate('user', 'id name email phone');
     res.json(orders);
 };
 
@@ -93,23 +93,61 @@ const getDashboardStats = async (req, res) => {
         const ordersCount = orders.length;
         const totalRevenue = orders.reduce((acc, order) => acc + (order.totalPrice || 0), 0);
 
-        // Mock data for charts if no real historical data exists
-        const salesData = [
-            { name: 'Jan', sales: 4000 },
-            { name: 'Feb', sales: 3000 },
-            { name: 'Mar', sales: 2000 },
-            { name: 'Apr', sales: 2780 },
-            { name: 'May', sales: 1890 },
-            { name: 'Jun', sales: 2390 },
-            { name: 'Jul', sales: 3490 },
-        ];
+        // Real sales data — aggregate orders by month
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const salesAgg = await Order.aggregate([
+            {
+                $group: {
+                    _id: { $month: '$createdAt' },
+                    sales: { $sum: '$totalPrice' }
+                }
+            },
+            { $sort: { '_id': 1 } }
+        ]);
+        // Build sales data with all months, filling gaps with 0
+        const salesData = monthNames.map((name, i) => {
+            const found = salesAgg.find(s => s._id === i + 1);
+            return { name, sales: found ? Math.round(found.sales) : 0 };
+        });
 
-        const categoryData = [
-            { name: 'Makeup', value: 400 },
-            { name: 'Skincare', value: 300 },
-            { name: 'Haircare', value: 300 },
-            { name: 'Fragrance', value: 200 },
-        ];
+        // Real category data — aggregate products by category
+        const categoryAgg = await Product.aggregate([
+            {
+                $group: {
+                    _id: '$category',
+                    value: { $sum: 1 }
+                }
+            },
+            { $sort: { value: -1 } }
+        ]);
+        const categoryData = categoryAgg.map(c => ({
+            name: c._id || 'Uncategorized',
+            value: c.value
+        }));
+
+        // Real recent orders
+        const recentOrders = await Order.find({})
+            .populate('user', 'name email')
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .lean();
+
+        // Growth calculation: compare last 30 days vs previous 30 days
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now - 60 * 24 * 60 * 60 * 1000);
+
+        const currentPeriodRevenue = orders
+            .filter(o => new Date(o.createdAt) >= thirtyDaysAgo)
+            .reduce((acc, o) => acc + (o.totalPrice || 0), 0);
+
+        const previousPeriodRevenue = orders
+            .filter(o => new Date(o.createdAt) >= sixtyDaysAgo && new Date(o.createdAt) < thirtyDaysAgo)
+            .reduce((acc, o) => acc + (o.totalPrice || 0), 0);
+
+        const growthPercent = previousPeriodRevenue > 0
+            ? (((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100).toFixed(1)
+            : currentPeriodRevenue > 0 ? '100.0' : '0.0';
 
         res.json({
             users: usersCount,
@@ -117,7 +155,9 @@ const getDashboardStats = async (req, res) => {
             orders: ordersCount,
             revenue: totalRevenue,
             salesData,
-            categoryData
+            categoryData,
+            recentOrders,
+            growthPercent
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

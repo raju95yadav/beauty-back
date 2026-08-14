@@ -1,5 +1,6 @@
 const Contact = require('../models/Contact');
 const User = require('../models/User');
+const Newsletter = require('../models/Newsletter');
 const nodemailer = require('nodemailer');
 
 // Mock data for support and jobs
@@ -91,9 +92,17 @@ const subscribeNewsletter = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: 'Email is required' });
   
-  // In a real app, save to DB
-  console.log(`Newsletter subscription: ${email}`);
-  res.status(200).json({ success: true, message: 'Successfully subscribed to newsletter!' });
+  try {
+    const existing = await Newsletter.findOne({ email: email.toLowerCase() });
+    if (existing) {
+      return res.status(200).json({ success: true, message: 'You are already subscribed!' });
+    }
+    await Newsletter.create({ email });
+    res.status(200).json({ success: true, message: 'Successfully subscribed to newsletter!' });
+  } catch (error) {
+    console.error('Newsletter subscription error:', error);
+    res.status(500).json({ message: 'Failed to subscribe. Please try again.' });
+  }
 };
 
 // @desc    Get support content

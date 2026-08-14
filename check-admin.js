@@ -15,11 +15,10 @@ const checkAdmin = async () => {
 
     if (!admin) {
       console.log('Admin user not found. Creating default admin...');
-      const hashedPassword = await bcrypt.hash('admin123', 10);
       admin = await User.create({
         name: 'Admin User',
         email: adminEmail,
-        password: hashedPassword,
+        password: 'admin123',
         role: 'admin'
       });
       console.log('Admin user created: admin@gmail.com / admin123');
