@@ -123,6 +123,12 @@ const adminLogin = async (req, res) => {
     return res.status(400).json({ message: 'Please provide email and password' });
   }
 
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+
+  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    return res.status(401).json({ message: 'Not authorized as admin' });
+  }
+
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
 
@@ -135,7 +141,6 @@ const adminLogin = async (req, res) => {
           id: user._id,
           email: user.email,
           name: user.name,
-          role: user.role,
         },
       });
     } else {

@@ -22,54 +22,36 @@ const adminRoutes = require('./routes/adminRoutes');
 const mainRoutes = require('./routes/mainRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
+connectDB();
+
 const app = express();
 
 // Trust proxy - required for Vercel/reverse proxy deployments
+// Fixes express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR error
 app.set('trust proxy', 1);
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // Limit each IP to 1000 requests per window
+    max: 100, // Limit each IP to 100 requests per `window`
     standardHeaders: true,
     legacyHeaders: false,
 });
 
 app.use(express.json());
-
 const allowedOrigins = [
     'https://beauty-glam-five.vercel.app',
-    'https://beauty-admin-five.vercel.app',
+    'https://beauty-admin-pied.vercel.app',
     'http://localhost:5173',
     'http://localhost:5174'
 ];
 
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
-            return callback(null, true);
-        }
-        return callback(null, true); // Fallback to allow during deployment
-    },
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     credentials: true
 }));
-
 app.use(helmet());
 app.use('/api', limiter);
-
-// Ensure DB is connected for serverless invocations
-app.use(async (req, res, next) => {
-    try {
-        await connectDB();
-        next();
-    } catch (err) {
-        console.error('Database connection failed:', err.message);
-        res.status(500).json({ 
-            message: 'Database connection failed. Please ensure MongoDB Atlas IP Whitelist (0.0.0.0/0) and MONGO_URI in Vercel Environment Variables are configured.' 
-        });
-    }
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -95,10 +77,6 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
-}
-
-module.exports = app;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
