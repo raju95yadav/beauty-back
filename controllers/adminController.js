@@ -54,6 +54,8 @@ const updateOrderStatus = async (req, res) => {
             order.orderStatus = status;
             order.isDelivered = status === 'Delivered';
             
+            order.trackingData = order.trackingData || {};
+
             if (status === 'Delivered') {
                 order.deliveredAt = Date.now();
             } else if (status === 'Packed') {

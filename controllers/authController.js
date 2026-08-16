@@ -124,12 +124,6 @@ const adminLogin = async (req, res) => {
     return res.status(400).json({ message: 'Please provide email and password' });
   }
 
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
-
-  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    return res.status(401).json({ message: 'Not authorized as admin' });
-  }
-
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
 
@@ -145,12 +139,14 @@ const adminLogin = async (req, res) => {
           role: user.role,
         },
       });
+    } else if (user && user.role !== 'admin') {
+      res.status(403).json({ message: 'Access denied. Account is not registered as an administrator.' });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({ message: 'Server error during admin login', error: error });
+    res.status(500).json({ message: 'Server error during admin login' });
   }
 };
 
