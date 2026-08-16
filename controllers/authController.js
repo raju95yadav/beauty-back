@@ -22,9 +22,9 @@ const sendOTP = async (req, res) => {
     const defaultName = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
     await User.findOneAndUpdate(
       { email: email.toLowerCase() },
-      { 
-        $set: { 
-          otp, 
+      {
+        $set: {
+          otp,
           otpExpiry
         },
         $setOnInsert: {
@@ -38,7 +38,7 @@ const sendOTP = async (req, res) => {
     console.log(`User DB update successful.`);
 
     const message = `Your Login OTP is ${otp}. It will expire in 5 minutes.`;
-    
+
     // Log OTP to console for debugging/fallback
     console.log('------------------------------------');
     console.log(`LOGIN OTP for ${email}: ${otp}`);
@@ -52,9 +52,9 @@ const sendOTP = async (req, res) => {
       });
     } catch (emailError) {
       console.error('Email sending failed, but OTP is logged to console:', emailError.message);
-      return res.status(200).json({ 
-        success: true, 
-        message: 'OTP generated (Check server logs for code if email fails)' 
+      return res.status(200).json({
+        success: true,
+        message: 'OTP generated (Check server logs for code if email fails)'
       });
     }
 
@@ -149,7 +149,8 @@ const adminLogin = async (req, res) => {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Server error during admin login' });
+    console.error('Admin login error:', error);
+    res.status(500).json({ message: 'Server error during admin login', error: error });
   }
 };
 
