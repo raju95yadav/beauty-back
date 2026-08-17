@@ -2,6 +2,9 @@ const User = require('../models/User');
 const generateOTP = require('../utils/generateOTP');
 const generateToken = require('../utils/generateToken');
 const { sendEmail } = require('../services/emailService');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @desc    Send OTP to email
 // @route   POST /api/auth/send-otp
@@ -210,6 +213,67 @@ const logout = async (req, res) => {
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
+// @desc    Google OAuth Sign-In
+// @route   POST /api/auth/google
+// @access  Public
+const googleAuth = async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ message: 'Token is required' });
+  }
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Google Token payload missing email' });
+    }
+
+    let user = await User.findOne({ email: email.toLowerCase() });
+
+    if (user) {
+      if (!user.googleId) user.googleId = googleId;
+      if (!user.avatar) user.avatar = picture;
+      if (!user.profilePic) user.profilePic = picture;
+      await user.save();
+    } else {
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        avatar: picture,
+        profilePic: picture,
+        googleId,
+        role: 'user',
+      });
+    }
+
+    const sessionToken = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      token: sessionToken,
+      role: user.role || 'user',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || user.profilePic,
+        role: user.role || 'user',
+      },
+    });
+  } catch (error) {
+    console.error('Google Sign-In Error:', error);
+    res.status(401).json({ message: 'Google Sign-In failed', error: error.message });
+  }
+};
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -217,4 +281,6 @@ module.exports = {
   updateAdminPassword,
   login,
   logout,
+  googleAuth,
 };
+

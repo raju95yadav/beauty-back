@@ -35,6 +35,12 @@ const userSchema = new mongoose.Schema(
     profilePic: {
       type: String,
     },
+    googleId: {
+      type: String,
+    },
+    avatar: {
+      type: String,
+    },
     address: {
       type: String,
     },
