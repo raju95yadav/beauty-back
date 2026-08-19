@@ -15,7 +15,7 @@ const getUsers = async (req, res) => {
 // @route   GET /api/admin/orders
 // @access  Private/Admin
 const getAllOrders = async (req, res) => {
-    const orders = await Order.find({}).populate('user', 'id name email phone');
+    const orders = await Order.find({}).populate('user', 'id name email phone').sort({ createdAt: -1 });
     res.json(orders);
 };
 
@@ -51,21 +51,65 @@ const updateOrderStatus = async (req, res) => {
         const order = await Order.findById(req.params.id);
 
         if (order) {
+            const now = new Date();
             order.orderStatus = status;
             order.isDelivered = status === 'Delivered';
-            
-            order.trackingData = order.trackingData || {};
 
-            if (status === 'Delivered') {
-                order.deliveredAt = Date.now();
+            order.trackingData = order.trackingData || {};
+            order.trackingData.statusLogs = order.trackingData.statusLogs || [];
+
+            let logTitle = `Order ${status}`;
+            let logDescription = `Order status changed to ${status}.`;
+            let logLocation = 'Fulfilment Center (Mumbai)';
+
+            if (status === 'Order Placed' || status === 'Confirmed') {
+                order.trackingData.placedAt = now;
+                logTitle = 'Order Placed';
+                logDescription = 'Order received and verified by system.';
+                logLocation = 'Mumbai Central Warehouse';
+            } else if (status === 'Processing') {
+                order.trackingData.processingAt = now;
+                logTitle = 'Processing & Allocation';
+                logDescription = 'Items allocated and being inspected for packaging.';
+                logLocation = 'Warehouse Processing Bay 4';
             } else if (status === 'Packed') {
-                order.trackingData.packedAt = Date.now();
+                order.trackingData.packedAt = now;
+                logTitle = 'Packed & Quality Verified';
+                logDescription = 'Package sealed in tamper-proof box and ready for dispatch.';
+                logLocation = 'Dispatch Hub (Mumbai)';
             } else if (status === 'Shipped') {
-                order.trackingData.shippedAt = Date.now();
+                order.trackingData.shippedAt = now;
+                logTitle = 'Shipped & In Transit';
+                logDescription = 'Package handed over to BlueDart courier partner.';
+                logLocation = 'Logistics Sorting Facility';
             } else if (status === 'Out for Delivery') {
-                order.trackingData.outForDeliveryAt = Date.now();
+                order.trackingData.outForDeliveryAt = now;
+                logTitle = 'Out for Delivery';
+                logDescription = 'Delivery executive is en route with your parcel.';
+                logLocation = `${order.shippingAddress?.city || 'Local'} Delivery Hub`;
+            } else if (status === 'Delivered') {
+                order.deliveredAt = now;
+                order.trackingData.deliveredAt = now;
+                logTitle = 'Package Delivered';
+                logDescription = 'Handed directly to recipient at shipping address.';
+                logLocation = `${order.shippingAddress?.street || 'Destination Address'}`;
+            } else if (status === 'Cancelled') {
+                order.isCancelled = true;
+                order.trackingData.cancelledAt = now;
+                logTitle = 'Order Cancelled';
+                logDescription = 'Order has been cancelled by administrator.';
+                logLocation = 'System Admin';
             }
-            
+
+            // Append status log
+            order.trackingData.statusLogs.push({
+                status,
+                title: logTitle,
+                description: logDescription,
+                location: logLocation,
+                timestamp: now
+            });
+
             const updatedOrder = await order.save();
 
             await createAdminNotification({
@@ -151,6 +195,11 @@ const getDashboardStats = async (req, res) => {
             ? (((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100).toFixed(1)
             : currentPeriodRevenue > 0 ? '100.0' : '0.0';
 
+        // Low stock & out of stock metrics
+        const lowStockItems = await Product.find({ stock: { $lte: 5 } }).sort({ stock: 1 }).lean();
+        const lowStockCount = lowStockItems.filter(p => p.stock > 0).length;
+        const outOfStockCount = lowStockItems.filter(p => p.stock <= 0).length;
+
         res.json({
             users: usersCount,
             products: productsCount,
@@ -159,10 +208,33 @@ const getDashboardStats = async (req, res) => {
             salesData,
             categoryData,
             recentOrders,
-            growthPercent
+            growthPercent,
+            lowStockCount,
+            outOfStockCount,
+            lowStockItems
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get low stock and out of stock inventory alerts
+// @route   GET /api/admin/inventory/alerts
+// @access  Private/Admin
+const getInventoryAlerts = async (req, res) => {
+    try {
+        const lowStockProducts = await Product.find({ stock: { $gt: 0, $lte: 5 } }).sort({ stock: 1 });
+        const outOfStockProducts = await Product.find({ stock: { $lte: 0 } }).sort({ name: 1 });
+
+        res.json({
+            lowStockProducts,
+            outOfStockProducts,
+            lowStockCount: lowStockProducts.length,
+            outOfStockCount: outOfStockProducts.length,
+            totalAlerts: lowStockProducts.length + outOfStockProducts.length
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message || 'Error fetching inventory alerts' });
     }
 };
 
@@ -216,4 +288,13 @@ const deleteOrder = async (req, res) => {
     }
 };
 
-module.exports = { getUsers, getAllOrders, deleteProductAdmin, updateOrderStatus, getDashboardStats, deleteUser, deleteOrder };
+module.exports = { 
+    getUsers, 
+    getAllOrders, 
+    deleteProductAdmin, 
+    updateOrderStatus, 
+    getDashboardStats, 
+    getInventoryAlerts,
+    deleteUser, 
+    deleteOrder 
+};

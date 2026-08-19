@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUsers, getAllOrders, deleteProductAdmin, updateOrderStatus, getDashboardStats, deleteUser, deleteOrder } = require('../controllers/adminController');
+const { getUsers, getAllOrders, deleteProductAdmin, updateOrderStatus, getDashboardStats, getInventoryAlerts, deleteUser, deleteOrder } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { 
   getNotifications, 
@@ -11,6 +11,7 @@ const {
 const router = express.Router();
 
 router.route('/stats').get(protect, admin, getDashboardStats);
+router.route('/inventory/alerts').get(protect, admin, getInventoryAlerts);
 router.route('/users').get(protect, admin, getUsers);
 router.route('/orders').get(protect, admin, getAllOrders);
 router.route('/product/:id').delete(protect, admin, deleteProductAdmin);

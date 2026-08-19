@@ -76,17 +76,31 @@ const orderSchema = mongoose.Schema(
         orderStatus: {
             type: String,
             required: true,
-            enum: ['Confirmed', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'],
-            default: 'Confirmed',
+            enum: ['Order Placed', 'Confirmed', 'Processing', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'],
+            default: 'Order Placed',
         },
         trackingData: {
+            placedAt: { type: Date },
+            processingAt: { type: Date },
             packedAt: { type: Date },
             shippedAt: { type: Date },
             outForDeliveryAt: { type: Date },
+            deliveredAt: { type: Date },
+            cancelledAt: { type: Date },
             estimatedDelivery: { type: Date },
-            dispatchCity: { type: String, default: 'Mumbai' },
+            trackingNumber: { type: String },
+            dispatchCity: { type: String, default: 'Mumbai Central Warehouse' },
             destinationCity: { type: String },
             courierPartner: { type: String, default: 'BlueDart Express' },
+            statusLogs: [
+                {
+                    status: { type: String, required: true },
+                    title: { type: String, required: true },
+                    description: { type: String },
+                    location: { type: String },
+                    timestamp: { type: Date, default: Date.now }
+                }
+            ]
         },
     },
     {

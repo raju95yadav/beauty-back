@@ -7,6 +7,7 @@ const {
     updateProduct,
     createProductReview,
     getProductsByCategory,
+    getFilterOptions,
 } = require('../controllers/productController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { upload } = require('../utils/cloudinary.js');
@@ -14,6 +15,7 @@ const { upload } = require('../utils/cloudinary.js');
 const router = express.Router();
 
 router.route('/').get(getProducts).post(protect, admin, upload.array('images', 5), createProduct);
+router.route('/filters').get(getFilterOptions);
 router.route('/category/:categoryName').get(getProductsByCategory);
 router
     .route('/:id')

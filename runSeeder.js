@@ -139,7 +139,10 @@ const seedDB = async () => {
       process.exit(1);
     }
 
-    const newProducts = seedData.map(product => {
+    const skinTypesList = ['Oily', 'Dry', 'Combination', 'Sensitive', 'Normal', 'All Skin Types'];
+    const ingredientsList = ['Hyaluronic Acid', 'Vitamin C', 'Niacinamide', 'Retinol', 'Salicylic Acid', 'Tea Tree', 'Aloe Vera', 'Rosehip Oil', 'Shea Butter', 'Squalane'];
+
+    const newProducts = seedData.map((product, idx) => {
       const p = new Product({
         user: adminUser._id,
         name: product.title,
@@ -148,7 +151,9 @@ const seedDB = async () => {
         stock: product.stock,
         category: product.category,
         description: `This is a premium ${product.category.toLowerCase()} product carefully crafted to enhance your daily beauty routine. Highly rated by customers, it provides magnificent value.`,
-        images: [{ url: product.imageUrl, public_id: 'seed_placeholder' }]
+        images: [{ url: product.imageUrl, public_id: 'seed_placeholder' }],
+        skinType: [skinTypesList[idx % skinTypesList.length], skinTypesList[(idx + 2) % skinTypesList.length]],
+        ingredients: [ingredientsList[idx % ingredientsList.length], ingredientsList[(idx + 3) % ingredientsList.length]],
       });
       return p;
     });

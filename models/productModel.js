@@ -60,6 +60,10 @@ const productSchema = mongoose.Schema(
             required: true,
             default: 0,
         },
+        lowStockThreshold: {
+            type: Number,
+            default: 5,
+        },
         rating: {
             type: Number,
             required: true,
@@ -71,6 +75,16 @@ const productSchema = mongoose.Schema(
             default: 0,
         },
         reviews: [reviewSchema],
+        skinType: [
+            {
+                type: String,
+            },
+        ],
+        ingredients: [
+            {
+                type: String,
+            },
+        ],
     },
     {
         timestamps: true,

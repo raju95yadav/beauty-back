@@ -19,6 +19,9 @@ const uploadToCloudinary = (buffer) => {
 // @desc    Fetch all products
 // @route   GET /api/products
 // @access  Public
+// @desc    Fetch all products
+// @route   GET /api/products
+// @access  Public
 const getProducts = async (req, res) => {
     try {
         const pageSize = Number(req.query.limit) || 12;
@@ -37,16 +40,46 @@ const getProducts = async (req, res) => {
         if (req.query.category) {
             const categories = Array.isArray(req.query.category) 
                 ? req.query.category 
-                : req.query.category.split(',').filter(Boolean);
+                : req.query.category.split(',').map(c => c.trim()).filter(Boolean);
             
             if (categories.length > 0) {
-                // Use a safer way to match categories that might contain special characters
                 categoryQuery = { category: { $in: categories.map(c => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } };
             }
         }
 
-        const brand = req.query.brand ? { brand: { $regex: req.query.brand, $options: 'i' } } : {};
-        
+        let brandQuery = {};
+        if (req.query.brand) {
+            const brands = Array.isArray(req.query.brand)
+                ? req.query.brand
+                : req.query.brand.split(',').map(b => b.trim()).filter(Boolean);
+
+            if (brands.length > 0) {
+                brandQuery = { brand: { $in: brands.map(b => new RegExp(`^${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } };
+            }
+        }
+
+        let skinTypeQuery = {};
+        if (req.query.skinType) {
+            const skinTypes = Array.isArray(req.query.skinType)
+                ? req.query.skinType
+                : req.query.skinType.split(',').map(s => s.trim()).filter(Boolean);
+
+            if (skinTypes.length > 0) {
+                skinTypeQuery = { skinType: { $in: skinTypes.map(s => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } };
+            }
+        }
+
+        let ingredientsQuery = {};
+        if (req.query.ingredients) {
+            const ingredients = Array.isArray(req.query.ingredients)
+                ? req.query.ingredients
+                : req.query.ingredients.split(',').map(i => i.trim()).filter(Boolean);
+
+            if (ingredients.length > 0) {
+                ingredientsQuery = { ingredients: { $in: ingredients.map(i => new RegExp(`^${i.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } };
+            }
+        }
+
         let priceFilter = {};
         if (req.query.minPrice || req.query.maxPrice) {
             priceFilter.price = {};
@@ -59,8 +92,10 @@ const getProducts = async (req, res) => {
         if (sort === 'price_asc') sortBy = { price: 1 };
         else if (sort === 'price_desc') sortBy = { price: -1 };
         else if (sort === 'rating') sortBy = { rating: -1 };
+        else if (sort === 'popular') sortBy = { numReviews: -1 };
+        else if (sort === 'name_asc') sortBy = { name: 1 };
 
-        const query = { ...keyword, ...categoryQuery, ...brand, ...priceFilter };
+        const query = { ...keyword, ...categoryQuery, ...brandQuery, ...skinTypeQuery, ...ingredientsQuery, ...priceFilter };
 
         const count = await Product.countDocuments(query);
         const products = await Product.find(query)
@@ -313,6 +348,59 @@ const getProductsByCategory = async (req, res) => {
     }
 };
 
+// @desc    Get dynamic filter options (categories, brands, skinTypes, ingredients, price min/max)
+// @route   GET /api/products/filters
+// @access  Public
+const getFilterOptions = async (req, res) => {
+    try {
+        const categories = await Product.distinct('category');
+        const brands = await Product.distinct('brand');
+        const skinTypesRaw = await Product.distinct('skinType');
+        const ingredientsRaw = await Product.distinct('ingredients');
+
+        // Clean & flatten arrays
+        const skinTypes = [...new Set(skinTypesRaw.flat().filter(Boolean))];
+        const ingredients = [...new Set(ingredientsRaw.flat().filter(Boolean))];
+
+        // Price range bounds
+        const priceStats = await Product.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    minPrice: { $min: "$price" },
+                    maxPrice: { $max: "$price" }
+                }
+            }
+        ]);
+
+        const minPrice = priceStats.length > 0 ? priceStats[0].minPrice : 0;
+        const maxPrice = priceStats.length > 0 ? priceStats[0].maxPrice : 10000;
+
+        // Category counts
+        const categoryCounts = await Product.aggregate([
+            { $group: { _id: "$category", count: { $sum: 1 } } }
+        ]);
+
+        // Brand counts
+        const brandCounts = await Product.aggregate([
+            { $group: { _id: "$brand", count: { $sum: 1 } } }
+        ]);
+
+        res.json({
+            categories: categories.filter(Boolean),
+            categoryCounts,
+            brands: brands.filter(Boolean),
+            brandCounts,
+            skinTypes,
+            ingredients,
+            minPrice,
+            maxPrice
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message || 'Error fetching filter options' });
+    }
+};
+
 module.exports = {
     getProducts,
     getProductById,
@@ -321,4 +409,5 @@ module.exports = {
     updateProduct,
     createProductReview,
     getProductsByCategory,
+    getFilterOptions,
 };
