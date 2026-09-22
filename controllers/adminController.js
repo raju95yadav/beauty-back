@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
+const Newsletter = require('../models/Newsletter');
 const { createAdminNotification } = require('./notificationController');
 
 // @desc    Get all users
@@ -288,6 +289,46 @@ const deleteOrder = async (req, res) => {
     }
 };
 
+// @desc    Get all newsletter subscribers
+// @route   GET /api/admin/newsletters
+// @access  Private/Admin
+const getNewsletterSubscribers = async (req, res) => {
+    try {
+        const subscribers = await Newsletter.find({}).sort({ createdAt: -1 });
+        res.json(subscribers);
+    } catch (error) {
+        console.error('Error fetching subscribers:', error);
+        res.status(500).json({ message: 'Failed to fetch newsletter subscribers' });
+    }
+};
+
+// @desc    Delete newsletter subscriber (remove spam)
+// @route   DELETE /api/admin/newsletter/:id
+// @access  Private/Admin
+const deleteNewsletterSubscriber = async (req, res) => {
+    try {
+        const subscriber = await Newsletter.findById(req.params.id);
+        if (!subscriber) {
+            return res.status(404).json({ message: 'Subscriber not found' });
+        }
+
+        const email = subscriber.email;
+        await Newsletter.findByIdAndDelete(req.params.id);
+
+        await createAdminNotification({
+            type: 'USER',
+            message: `Newsletter subscriber removed: ${email}`,
+            link: '/subscribers',
+            adminId: req.user._id
+        });
+
+        res.json({ success: true, message: 'Subscriber removed successfully', id: req.params.id });
+    } catch (error) {
+        console.error('Error deleting subscriber:', error);
+        res.status(500).json({ message: 'Failed to delete subscriber' });
+    }
+};
+
 module.exports = { 
     getUsers, 
     getAllOrders, 
@@ -296,5 +337,7 @@ module.exports = {
     getDashboardStats, 
     getInventoryAlerts,
     deleteUser, 
-    deleteOrder 
+    deleteOrder,
+    getNewsletterSubscribers,
+    deleteNewsletterSubscriber
 };

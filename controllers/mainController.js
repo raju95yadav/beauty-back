@@ -87,21 +87,99 @@ const jobListings = [
 ];
 
 // @desc    Newsletter subscription
-// @route   POST /api/newsletter
+// @route   POST /api/main/newsletter
 const subscribeNewsletter = async (req, res) => {
-  const { email } = req.body;
+  const { email, source = 'footer' } = req.body;
   if (!email) return res.status(400).json({ message: 'Email is required' });
   
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    return res.status(400).json({ message: 'Please provide a valid email address' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
   try {
-    const existing = await Newsletter.findOne({ email: email.toLowerCase() });
+    const existing = await Newsletter.findOne({ email: normalizedEmail });
     if (existing) {
-      return res.status(200).json({ success: true, message: 'You are already subscribed!' });
+      if (existing.status === 'unsubscribed') {
+        existing.status = 'active';
+        existing.source = source;
+        await existing.save();
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Welcome back to the Beauty Circle!',
+          alreadySubscribed: false 
+        });
+      }
+      return res.status(200).json({ 
+        success: true, 
+        message: 'You are already subscribed to the Beauty Circle!', 
+        alreadySubscribed: true 
+      });
     }
-    await Newsletter.create({ email });
-    res.status(200).json({ success: true, message: 'Successfully subscribed to newsletter!' });
+
+    const subscriber = await Newsletter.create({ 
+      email: normalizedEmail, 
+      source,
+      status: 'active' 
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Successfully subscribed to the Beauty Circle!', 
+      alreadySubscribed: false,
+      subscriber 
+    });
   } catch (error) {
     console.error('Newsletter subscription error:', error);
     res.status(500).json({ message: 'Failed to subscribe. Please try again.' });
+  }
+};
+
+// @desc    Check newsletter status
+// @route   GET /api/main/newsletter/status
+const checkNewsletterStatus = async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ message: 'Email query parameter is required' });
+
+  try {
+    const subscriber = await Newsletter.findOne({ 
+      email: email.trim().toLowerCase(),
+      status: 'active'
+    });
+    res.status(200).json({ 
+      isSubscribed: !!subscriber,
+      subscriber: subscriber || null 
+    });
+  } catch (error) {
+    console.error('Check newsletter status error:', error);
+    res.status(500).json({ message: 'Failed to check subscription status' });
+  }
+};
+
+// @desc    Unsubscribe from newsletter
+// @route   POST /api/main/newsletter/unsubscribe
+const unsubscribeNewsletter = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
+  try {
+    const subscriber = await Newsletter.findOne({ email: email.trim().toLowerCase() });
+    if (!subscriber) {
+      return res.status(404).json({ message: 'Subscription not found' });
+    }
+
+    subscriber.status = 'unsubscribed';
+    await subscriber.save();
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'You have been unsubscribed from the newsletter.' 
+    });
+  } catch (error) {
+    console.error('Unsubscribe error:', error);
+    res.status(500).json({ message: 'Failed to unsubscribe' });
   }
 };
 
@@ -207,6 +285,8 @@ const getAboutContent = async (req, res) => {
 
 module.exports = {
   subscribeNewsletter,
+  checkNewsletterStatus,
+  unsubscribeNewsletter,
   getSupportContent,
   getAboutContent,
   getJobs,

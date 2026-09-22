@@ -9,6 +9,15 @@ const newsletterSchema = mongoose.Schema(
             trim: true,
             lowercase: true,
         },
+        source: {
+            type: String,
+            default: 'footer',
+        },
+        status: {
+            type: String,
+            enum: ['active', 'unsubscribed'],
+            default: 'active',
+        },
     },
     {
         timestamps: true,

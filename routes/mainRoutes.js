@@ -1,6 +1,8 @@
 const express = require('express');
 const {
   subscribeNewsletter,
+  checkNewsletterStatus,
+  unsubscribeNewsletter,
   getSupportContent,
   getAboutContent,
   getJobs,
@@ -11,6 +13,8 @@ const {
 const router = express.Router();
 
 router.post('/newsletter', subscribeNewsletter);
+router.get('/newsletter/status', checkNewsletterStatus);
+router.post('/newsletter/unsubscribe', unsubscribeNewsletter);
 router.get('/support/:type', getSupportContent);
 router.get('/about', getAboutContent);
 router.get('/jobs', getJobs);

@@ -1,5 +1,16 @@
 const express = require('express');
-const { getUsers, getAllOrders, deleteProductAdmin, updateOrderStatus, getDashboardStats, getInventoryAlerts, deleteUser, deleteOrder } = require('../controllers/adminController');
+const { 
+  getUsers, 
+  getAllOrders, 
+  deleteProductAdmin, 
+  updateOrderStatus, 
+  getDashboardStats, 
+  getInventoryAlerts, 
+  deleteUser, 
+  deleteOrder,
+  getNewsletterSubscribers,
+  deleteNewsletterSubscriber
+} = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { 
   getNotifications, 
@@ -18,6 +29,10 @@ router.route('/product/:id').delete(protect, admin, deleteProductAdmin);
 router.route('/order/:id/status').put(protect, admin, updateOrderStatus);
 router.route('/user/:id').delete(protect, admin, deleteUser);
 router.route('/order/:id').delete(protect, admin, deleteOrder);
+
+// Newsletter Subscribers Routes
+router.route('/newsletters').get(protect, admin, getNewsletterSubscribers);
+router.route('/newsletter/:id').delete(protect, admin, deleteNewsletterSubscriber);
 
 // Notification Routes
 router.route('/notifications')
