@@ -35,7 +35,7 @@ const sendOTP = async (req, res) => {
           role: 'user'
         }
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     console.log(`User DB update successful.`);
@@ -50,14 +50,15 @@ const sendOTP = async (req, res) => {
     try {
       await sendEmail({
         email,
-        subject: 'Login OTP',
+        subject: 'Glam Beauty - Your Login OTP',
         message,
       });
+      console.log(`[AUTH] OTP email dispatched successfully to ${email}`);
     } catch (emailError) {
-      console.error('Email sending failed, but OTP is logged to console:', emailError.message);
+      console.warn(`[AUTH] Email sending failed (${emailError.message}), but OTP is safely logged to server console: ${otp}`);
       return res.status(200).json({
         success: true,
-        message: 'OTP generated (Check server logs for code if email fails)'
+        message: 'OTP generated (Email service unavailable: check server console logs for code)'
       });
     }
 
