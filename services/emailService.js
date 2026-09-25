@@ -8,11 +8,11 @@ const sendEmail = async ({ email, subject, message }) => {
     throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing. Please add them to your environment configuration.');
   }
 
-  // Cloud/Serverless-optimized transport settings for Gmail SMTP
+  // SMTP transport settings for Gmail (Port 587 with STARTTLS works across all networks & cloud providers)
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    port: 587,
+    secure: false, // true for 465, false for 587 with STARTTLS
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -20,9 +20,9 @@ const sendEmail = async ({ email, subject, message }) => {
     tls: {
       rejectUnauthorized: false,
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 5000,
-    socketTimeout: 10000,
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 
   const otpCode = message.match(/\b\d{6}\b/)?.[0] || '';
